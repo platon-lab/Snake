@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Супер Змійка: Герої</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #0f0c29;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* Екран вибору */
+        #menu {
+            text-align: center;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        h1 { font-size: 2rem; text-shadow: 0 0 10px var(--primary); }
+
+        .stats-display {
+            background: var(--card-bg);
+            padding: 10px 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .characters {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            max-width: 400px;
+        }
+
+        .char-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .char-card:active, .char-card.selected {
+            border-color: var(--primary);
+            transform: scale(0.95);
+            background: rgba(108, 92, 231, 0.2);
+        }
+
+        .char-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .char-name { margin-top: 10px; font-weight: bold; }
+
+        /* Гра */
+        #game-container {
+            display: none;
+            position: relative;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            background: rgba(0, 0, 0, 0.3);
+            border: 3px solid var(--primary);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .game-ui {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .btn-reset {
+            margin-top: 20px;
+            background: #ff7675;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-reset:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1>Обери свого героя</h1>
+        <div class="stats-display">
+            Рекорд: <span id="high-score">0</span> | Поразок: <span id="death-count">0</span>
+        </div>
+        
+        <div class="characters">
+            <div class="char-card" onclick="startGame('Tito', 'Tito.png', ['#FFD700', '#FFA500', '#FF4500'])">
+                <img src="Tito.png" alt="Tito">
+                <div class="char-name">Тіто</div>
+            </div>
+            <div class="char-card" onclick="startGame('Smartik', 'Smartik.png', ['#00d2ff', '#3a7bd5', '#ffffff'])">
+                <img src="Smartik.png" alt="Smartik">
+                <div class="char-name">Смартик</div>
+            </div>
+            <div class="char-card" onclick="startGame('Junior', 'Junior.png', ['#55efc4', '#00b894', '#ffffff'])">
+                <img src="Junior.png" alt="Junior">
+                <div class="char-name">Джуніор</div>
+            </div>
+            <div class="char-card" onclick="startGame('Fil', 'Fil.png', ['#a29bfe', '#6c5ce7', '#dfe6e9'])">
+                <img src="Fil.png" alt="Fil">
+                <div class="char-name">Філ</div>
+            </div>
+        </div>
+
+        <button class="btn-reset" onclick="resetStats()">Скинути рекорд</button>
+    </div>
+
+    <div id="game-container">
+        <div class="game-ui">
+            <span>Рахунок: <span id="current-score">0</span></span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <p style="font-size: 0.8rem; opacity: 0.7;">Використовуй свайп або стрілочки</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const gameContainer = document.getElementById('game-container');
+
+        // Налаштування сітки
+        const gridSize = 20;
+        let tileCount;
+        let snake = [];
+        let food = { x: 5, y: 5 };
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let currentColors = [];
+        let headImg = new Image();
+        
+        // Статистика
+        let highScore = localStorage.getItem('snake_highScore') || 0;
+        let deaths = localStorage.getItem('snake_deaths') || 0;
+
+        function updateStatsDisplay() {
+            document.getElementById('high-score').innerText = highScore;
+            document.getElementById('death-count').innerText = deaths;
+        }
+        updateStatsDisplay();
+
+        function startGame(name, imgSrc, colors) {
+            headImg.src = imgSrc;
+            currentColors = colors;
+            
+            // Налаштування розміру канвасу під екран
+            const size = Math.min(window.innerWidth - 40, 400);
+            canvas.width = canvas.height = Math.floor(size / gridSize) * gridSize;
+            tileCount = canvas.width / gridSize;
+
+            menu.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            
+            resetGame();
+            main();
+        }
+
+        function resetGame() {
+            snake = [{ x: 10, y: 10, color: '#fff' }];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            document.getElementById('current-score').innerText = score;
+            spawnFood();
+        }
+
+        function spawnFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+            // Перевірка, щоб їжа не спавнилась на змійці
+            snake.forEach(part => {
+                if (part.x === food.x && part.y === food.y) spawnFood();
+            });
+        }
+
+        function main() {
+            if (didGameEnd()) {
+                deaths++;
+                localStorage.setItem('snake_deaths', deaths);
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snake_highScore', highScore);
+                }
+                updateStatsDisplay();
+                alert("Гру закінчено! Твій рахунок: " + score);
+                menu.style.display = 'block';
+                gameContainer.style.display = 'none';
+                return;
+            }
+
+            setTimeout(function onTick() {
+                clearCanvas();
+                drawFood();
+                advanceSnake();
+                drawSnake();
+                main();
+            }, 150);
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Сітка для краси
+            ctx.strokeStyle = "rgba(255,255,255,0.05)";
+            for(let i=0; i<canvas.width; i+=gridSize) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                if (index === 0) {
+                    // Малюємо голову як картинку
+                    ctx.drawImage(headImg, part.x * gridSize, part.y * gridSize, gridSize, gridSize);
+                } else {
+                    // Малюємо хвіст кольоровим квадратиком
+                    ctx.fillStyle = part.color;
+                    ctx.beginPath();
+                    ctx.roundRect(part.x * gridSize + 1, part.y * gridSize + 1, gridSize - 2, gridSize - 2, 5);
+                    ctx.fill();
+                }
+            });
+        }
+
+        function advanceSnake() {
+            if (dx === 0 && dy === 0) return; // Змійка стоїть на місці на старті
+
+            const head = { 
+                x: snake[0].x + dx, 
+                y: snake[0].y + dy,
+                color: currentColors[Math.floor(Math.random() * currentColors.length)]
+            };
+
+            snake.unshift(head);
+
+            if (snake[0].x === food.x && snake[0].y === food.y) {
+                score += 10;
+                document.getElementById('current-score').innerText = score;
+                spawnFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function didGameEnd() {
+            if (dx === 0 && dy === 0) return false;
+            
+            const hitLeftWall = snake[0].x < 0;
+            const hitRightWall = snake[0].x > tileCount - 1;
+            const hitTopWall = snake[0].y < 0;
+            const hitBottomWall = snake[0].y > tileCount - 1;
+
+            let hitSelf = false;
+            for (let i = 4; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) hitSelf = true;
+            }
+
+            return hitLeftWall || hitRightWall || hitTopWall || hitBottomWall || hitSelf;
+        }
+
+        function drawFood() {
+            ctx.fillStyle = "#ff4757";
+            ctx.beginPath();
+            ctx.arc(food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Відблиск на яблучку
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(food.x * gridSize + gridSize/3, food.y * gridSize + gridSize/3, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Керування клавіатурою
+        document.addEventListener('keydown', (e) => {
+            const LEFT_KEY = 37; const RIGHT_KEY = 39; const UP_KEY = 38; const DOWN_KEY = 40;
+            if (e.keyCode === LEFT_KEY && dx !== 1) { dx = -1; dy = 0; }
+            if (e.keyCode === UP_KEY && dy !== 1) { dx = 0; dy = -1; }
+            if (e.keyCode === RIGHT_KEY && dx !== -1) { dx = 1; dy = 0; }
+            if (e.keyCode === DOWN_KEY && dy !== -1) { dx = 0; dy = 1; }
+        });
+
+        // Керування свайпами
+        let touchstartX = 0;
+        let touchstartY = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+        }, false);
+
+        document.addEventListener('touchend', e => {
+            let touchendX = e.changedTouches[0].screenX;
+            let touchendY = e.changedTouches[0].screenY;
+            handleSwipe(touchstartX, touchstartY, touchendX, touchendY);
+        }, false);
+
+        function handleSwipe(x1, y1, x2, y2) {
+            const xDiff = x2 - x1;
+            const yDiff = y2 - y1;
+            if (Math.abs(xDiff) > Math.abs(yDiff)) {
+                if (xDiff > 0 && dx !== -1) { dx = 1; dy = 0; }
+                else if (dx !== 1) { dx = -1; dy = 0; }
+            } else {
+                if (yDiff > 0 && dy !== -1) { dx = 0; dy = 1; }
+                else if (dy !== 1) { dx = 0; dy = -1; }
+            }
+        }
+
+        function resetStats() {
+            if(confirm("Ти впевнений, що хочеш скинути рекорд?")) {
+                localStorage.clear();
+                highScore = 0;
+                deaths = 0;
+                updateStatsDisplay();
+            }
+        }
+    </script>
+</body>
+</html>
