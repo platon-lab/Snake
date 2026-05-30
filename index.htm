@@ -70,6 +70,24 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 15px;
             max-width: 350px;
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 5px;
+            touch-action: pan-y;
+        }
+
+        /* Стилізація повзунка прокрутки для списку героїв */
+        .characters::-webkit-scrollbar {
+            width: 6px;
+        }
+        .characters::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+        .characters::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+            box-shadow: 0 0 10px var(--primary);
         }
 
         .char-card {
@@ -142,6 +160,7 @@
         </div>
         
         <div class="characters">
+            <!-- Старі герої -->
             <div class="char-card" onclick="startGame('Tito', 'Tito.png', ['#FFD700', '#FFA500'])">
                 <img src="Tito.png" alt="Tito">
                 <div class="char-name">Тіто</div>
@@ -165,6 +184,64 @@
             <div class="char-card" onclick="startGame('Bark', 'Bark.png', ['#a29bfe', '#6c5ce7'])">
                 <img src="Bark.png" alt="Bark">
                 <div class="char-name">Барк</div>
+            </div>
+
+            <!-- Нові 14 героїв -->
+            <div class="char-card" onclick="startGame('Persik', 'Persik.png', ['#ffb142', '#ff793f'])">
+                <img src="Persik.png" alt="Persik">
+                <div class="char-name">Persik</div>
+            </div>
+            <div class="char-card" onclick="startGame('Spike', 'Spike.png', ['#26de81', '#2bcb71'])">
+                <img src="Spike.png" alt="Spike">
+                <div class="char-name">Spike</div>
+            </div>
+            <div class="char-card" onclick="startGame('Alyonka', 'Alyonka.png', ['#ff4757', '#ff6b81'])">
+                <img src="Alyonka.png" alt="Alyonka">
+                <div class="char-name">Alyonka</div>
+            </div>
+            <div class="char-card" onclick="startGame('Lilu', 'Lilu.png', ['#fd79a8', '#e84393'])">
+                <img src="Lilu.png" alt="Lilu">
+                <div class="char-name">Lilu</div>
+            </div>
+            <div class="char-card" onclick="startGame('Manya', 'Manya.png', ['#ffeaa7', '#fdcb6e'])">
+                <img src="Manya.png" alt="Manya">
+                <div class="char-name">Manya</div>
+            </div>
+            <div class="char-card" onclick="startGame('Liza', 'Liza.png', ['#00cec9', '#00b894'])">
+                <img src="Liza.png" alt="Liza">
+                <div class="char-name">Liza</div>
+            </div>
+            <div class="char-card" onclick="startGame('Grivna', 'Grivna.png', ['#4cd137', '#44bd32'])">
+                <img src="Grivna.png" alt="Grivna">
+                <div class="char-name">Grivna</div>
+            </div>
+            <div class="char-card" onclick="startGame('Ben', 'Ben.png', ['#7158e2', '#3d3d3d'])">
+                <img src="Ben.png" alt="Ben">
+                <div class="char-name">Ben</div>
+            </div>
+            <div class="char-card" onclick="startGame('Goldi', 'Goldi.png', ['#eccc68', '#ffa502'])">
+                <img src="Goldi.png" alt="Goldi">
+                <div class="char-name">Goldi</div>
+            </div>
+            <div class="char-card" onclick="startGame('Raf', 'Raf.png', ['#70a1ff', '#1e90ff'])">
+                <img src="Raf.png" alt="Raf">
+                <div class="char-name">Raf</div>
+            </div>
+            <div class="char-card" onclick="startGame('Veles', 'Veles.png', ['#95afc0', '#57606f'])">
+                <img src="Veles.png" alt="Veles">
+                <div class="char-name">Veles</div>
+            </div>
+            <div class="char-card" onclick="startGame('Masha', 'Masha.png', ['#ff9ff3', '#fec107'])">
+                <img src="Masha.png" alt="Masha">
+                <div class="char-name">Masha</div>
+            </div>
+            <div class="char-card" onclick="startGame('Brilliantik', 'Brilliantik.png', ['#70a1ff', '#00d2ff'])">
+                <img src="Brilliantik.png" alt="Brilliantik">
+                <div class="char-name">Brilliantik</div>
+            </div>
+            <div class="char-card" onclick="startGame('Richik', 'Richik.png', ['#fffa65', '#fff200'])">
+                <img src="Richik.png" alt="Richik">
+                <div class="char-name">Richik</div>
             </div>
         </div>
     </div>
@@ -376,6 +453,9 @@
         let tsX, tsY;
         document.addEventListener('touchstart', e => { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; });
         document.addEventListener('touchend', e => {
+            // Перевіряємо, чи свайп відбувся всередині блоку з героями, якщо так - ігноруємо керування змійкою
+            if (e.target.closest('.characters')) return;
+
             const dx_ = e.changedTouches[0].clientX - tsX;
             const dy_ = e.changedTouches[0].clientY - tsY;
             if (Math.abs(dx_) > Math.abs(dy_)) {
